@@ -11,7 +11,8 @@ ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src" / "stu.md"
 OUT = ROOT / "index.html"
 
-TITLE = "Two More Answers Cost Eight Times the Read"
+TITLE = "Is the Next Sample Worth the Read?"
+REPO = "https://github.com/Jing524/Verifier-Bottleneck-for-Math-LLMs"
 DATE = "22 September 2026"
 
 
@@ -691,7 +692,7 @@ def toc_html(body: str) -> str:
 def page_html(body: str) -> str:
     bibtex = """@misc{huang2026stu,
   author       = {Huang, Jing and Bi, Jiaxi and Luo, Tongxu and Wang, Benyou},
-  title        = {Two More Answers Cost Eight Times the Read},
+  title        = {Is the Next Sample Worth the Read?},
   year         = {2026},
   howpublished = {Research note},
   note         = {Affiliations: The Chinese University of Hong Kong, Shenzhen (CUHK-Shenzhen); Shenzhen Loop Area Institute (SLAI). Correspondence to Benyou Wang}
@@ -714,6 +715,7 @@ def page_html(body: str) -> str:
     <main class="page">
     <header class="mast">
       <p class="date">{html.escape(DATE)}</p>
+      <a class="repo" href="{html.escape(REPO)}">Repository</a>
     </header>
     <article>
       <h1 id="top">{html.escape(TITLE)}</h1>

@@ -105,6 +105,13 @@ a:hover { color: var(--ink); }
   font: 14px/1.4 "Source Sans 3", system-ui, sans-serif;
 }
 
+.repo {
+  font: 500 14px/1.4 "Source Sans 3", system-ui, sans-serif;
+  color: var(--accent);
+  text-decoration: none;
+}
+.repo:hover { color: var(--ink); }
+
 .lang {
   display: inline-flex;
   padding: 3px;
