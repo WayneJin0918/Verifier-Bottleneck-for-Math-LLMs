@@ -12,7 +12,7 @@ SRC = ROOT / "src" / "stu.md"
 OUT = ROOT / "index.html"
 
 TITLE = "Is the Next Sample Worth the Read?"
-REPO = "https://github.com/Jing524/Verifier-Bottleneck-for-Math-LLMs"
+REPO = "https://github.com/WayneJin0918/Verifier-Bottleneck-for-Math-LLMs"
 DATE = "22 September 2026"
 
 
