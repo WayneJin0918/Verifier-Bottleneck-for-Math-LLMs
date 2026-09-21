@@ -12,7 +12,7 @@ SRC = ROOT / "src" / "stu.md"
 OUT = ROOT / "index.html"
 
 TITLE = "Is the Next Sample Worth the Read?"
-REPO = "https://github.com/WayneJin0918/Verifier-Bottleneck-for-Math-LLMs"
+REPO = "https://github.com/WayneJin0918/Verifier-Bottleneck-for-Math-LLMs/tree/main"
 DATE = "22 September 2026"
 
 
@@ -715,7 +715,7 @@ def page_html(body: str) -> str:
     <main class="page">
     <header class="mast">
       <p class="date">{html.escape(DATE)}</p>
-      <a class="repo" href="{html.escape(REPO)}">Repository</a>
+      <a class="repo" href="{html.escape(REPO)}">Code</a>
     </header>
     <article>
       <h1 id="top">{html.escape(TITLE)}</h1>
