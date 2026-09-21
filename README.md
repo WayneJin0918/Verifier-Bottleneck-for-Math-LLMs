@@ -43,6 +43,7 @@ AIME 2025 (30 problems), the Qwen3-4B-Thinking-2507 solver, the generation promp
 | [Metric](metrics/definitions.md) | Formal definition of STU |
 | [Parallel vs serial protocol](docs/07-experiments.md) | The grid, matched-budget comparison, and what would falsify the claim |
 | [Blog plan](docs/08-blog-plan.md) | The additional experiments required before a research blog |
+| [Theory](docs/09-theory.md) | Identities and the parallel-width proposition behind those experiments |
 | [Goals](docs/01-goals.md) | What the three questions are |
 | [Models](docs/03-models.md) | Solver and the two verifiers |
 | [Heavy Pipeline cell](docs/04-heavy-pipeline-params.md) | The locked \((n=64, r\le 16)\) setting |
