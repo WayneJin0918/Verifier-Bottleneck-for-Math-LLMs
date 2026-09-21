@@ -1,4 +1,8 @@
-# DeepSeekMath-V2 Heavy Pipeline × STOP 实验方案梳理
+# Verifier Bottleneck for Math LLMs
+
+**Does a small math solver already generate the right proof — and is the bottleneck verification?**
+
+A controlled study of the DeepSeekMath-V2 Heavy Pipeline on AIME 2025: 4B self-verification, a strong verifier (DeepSeek-V4-Flash), and STOP-style online checks. The question is not “how high can AIME go,” but where the compute is wasted.
 
 本文只整理实验本身的研究思路、流程、参数、对照关系、已有结果与后续比较方式，不包含项目路径、目录结构、输出路径、代码恢复过程等工程细节。
 
