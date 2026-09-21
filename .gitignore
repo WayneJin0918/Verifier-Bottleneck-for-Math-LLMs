@@ -11,3 +11,8 @@ venv/
 .vscode/
 *.log
 .ipynb_checkpoints/
+
+# Research notes stay local. The repository tracks the site code.
+docs/
+metrics/
+AUTHORS.md
