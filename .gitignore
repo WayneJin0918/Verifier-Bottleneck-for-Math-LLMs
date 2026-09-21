@@ -16,3 +16,15 @@ venv/
 docs/
 metrics/
 AUTHORS.md
+
+# Traces stay local. The note's AIME table is recomputed by experiments/analyze.py.
+experiments/logs/
+experiments/__pycache__/
+experiments/probe*.jsonl
+experiments/results/**/generations.jsonl
+experiments/results/**/verifications.jsonl
+experiments/results/**/support.jsonl
+experiments/results/**/*.jsonl
+experiments/subset.json
+experiments/results/tier1/
+experiments/results/hf_probe/
