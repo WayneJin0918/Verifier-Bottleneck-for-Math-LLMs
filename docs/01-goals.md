@@ -1,41 +1,34 @@
 # 1. 实验目标
 
-整个项目围绕 DeepSeekMath-V2 的 Heavy Pipeline / High-Compute Search 展开，核心目标不是单纯追求更高的 AIME 分数，而是分析：
+要验证的不是「多采样能不能把 AIME 做高」，而是：test-time scaling 的效率应不应该用结构任务利用率来衡量。
 
-1. 小模型 solver 在大量采样下到底有没有生成正确解的能力；
-2. Heavy Pipeline 的瓶颈究竟来自 generation 还是 verification / selection；
-3. 将 verifier 从 Qwen3-4B 替换成更强的 DeepSeek-V4-Flash 后，是否能更好地从候选中找出正确解；
-4. 在使用强 verifier 的基础上，引入 STOP 风格的中途检查，是否能够用更少计算量达到相同或更高的最终准确率。
+\[
+\mathrm{STU}=\frac{A\cdot\beta\cdot\rho}{\alpha\cdot\tau}
+\]
 
-## 递进关系
+\(A\) 是准确率，\(\beta\) 是注意力有没有落在与答案相关的 token 上，\(\rho\) 是读入 token 与答案的相关占比，\(\alpha\) 是激活参数占比，\(\tau\) 是相对 1024 的读入长度。定义见 [metrics/definitions.md](../metrics/definitions.md)。
 
-```
-Experiment 1
-Pure-4B Heavy Pipeline
-Qwen3-4B Solver + Qwen3-4B Verifier
-        |
-        | 诊断 generation 与 self-verification
-        v
-Experiment 2
-Strong-Verifier Heavy Pipeline
-Qwen3-4B Solver + DeepSeek-V4-Flash Verifier
-        |
-        | 控制 verifier strength
-        v
-Experiment 3
-STOP
-Qwen3-4B Solver + DeepSeek-V4-Flash Verifier
-4k / 8k / 12k / 16k prefix checkpoints
-```
+只加准确率，区分不开两种花法：
 
-## 三个核心研究问题
+- **并行**：再独立生成一条证明。多出来的往往是一整段与答案无关的轨迹，\(\tau\) 上升、\(\rho\) 下降，准确率仍可能上升。
+- **串行反思**：对着同一条轨迹验证、指出问题、再改写，重复多轮。有效的一轮应让注意力移到出错的那一步（\(\beta\) 上升），并换掉与答案无关的 token（\(\rho\) 上升）。STOP 的 4k / 8k / 12k / 16k 前缀检查是串行过程里的提前截断，不是第三套实验。
+
+因此实验是一张宽度 × 深度的表，而不是三条互不相关的流水线。Heavy Pipeline 的 \(n=64\)、最多 16 轮修正，只是这张表里的一个格子。协议见 [07-experiments.md](07-experiments.md)。
+
+## 三个要分开的问题
 
 \[
 \boxed{
-\text{Generator potential}
+\text{Parallel width}
 \rightarrow
-\text{Verifier bottleneck}
+\text{Serial reflection depth}
 \rightarrow
-\text{Online verification efficiency}
+\text{Verifier activation}
 }
 \]
+
+| 问题 | 怎么动 | 看 STU 的哪一项 |
+|------|--------|-----------------|
+| 小模型在多采样下有没有正确解 | 只加并行宽度 \(n\) | \(A\) 是否上升，以及上升时 \(\rho\) 是否被新轨迹稀释 |
+| 反思是在改写无关 token，还是在空转 | 只加串行轮数 \(r\)，或在轮内按前缀截断 | \(\beta\)、\(\rho\) 是否上升，\(\tau\) 是否比再开一批并行更小 |
+| 更强的 verifier 是结构上更省，还是只是更会打分 | 同一 \((n,r)\)，把 verifier 从 4B（\(\alpha=1\)）换成 Flash（\(\alpha\approx 0.0458\)） | \(A\) 与 \(\beta\) 是否一起上升；\(\alpha\) 下降不能单独当成算得更少 |

@@ -1,113 +1,169 @@
 # Metric 形式化定义
 
-本文档单独抽出本实验方案中的全部可比较指标，便于跨 Experiment 1 / 2 / 3 对齐口径。
+只看 AIME 准确率，或只看 verification score，回答不了「这次计算在任务上是否用得有效」。准确率是结果；模型有没有把参数、注意力和读入的 token 用在答案上，才是效率。
 
-## 1. 主指标：AIME Exact-Answer Accuracy
+主指标是 **结构任务利用率（Structural Task Utilization, STU）**。它由四项组成，方向不同，不能都当成越大越好直接相乘：
 
-| 字段 | 定义 |
-|------|------|
-| 名称 | `aime_exact_answer_accuracy` |
-| 数据集 | AIME 2025 |
-| \(N\) | 30 |
-| 公式 | \(\text{Accuracy} = \dfrac{\#\{\text{problems with exact correct answer}\}}{30}\) |
-| 答案判定 | exact-answer match（与统一 AIME evaluator 一致） |
-| 用途 | 所有实验的最终任务指标 |
+| 因子 | 记号 | 含义 | 进入 STU 的方式 |
+|------|------|------|-----------------|
+| 任务准确率 | \(A\) | 最终答案对不对 | 分子，越大越好 |
+| 注意力利用率 | \(\beta\) | 注意力是否落在与答案相关的 token 上 | 分子，越大越好 |
+| 读取 token–答案相关占比 | \(\rho\) | 读进来的 token 里，有多少和答案相关 | 分子，越大越好 |
+| 激活参数占比 | \(\alpha\) | 每个 token 实际唤醒的参数占模型总参数的比例 | 分母，占比越低，同样准确率的结构代价越小 |
 
-### 可比性约束（必须一致）
-
-- 数据集
-- solver checkpoint
-- generation prompt
-- answer extraction
-- temperature / top-p / generation max length
-- Heavy Pipeline search budget
-- 最终 AIME evaluator
-
-任一上述项变化时，不得直接横向比较 accuracy。
+读入长度单独归一化，避免只靠少读 token 把分数做高而不被看见。
 
 ---
 
-## 2. Verification Score（候选排序分）
-
-| 字段 | 定义 |
-|------|------|
-| 名称 | `verification_score` |
-| 记法 | \(s(p)\) |
-| 输入 | 同一 proof \(p\) 的 \(K\) 次独立 verification ratings |
-| \(K\) | 64（`n_verification_per_proof` / `n_agg_trials`） |
-| 单次 rating | \(r_i \in \{0.0, 0.5, 1.0\}\) |
-| 聚合 | \(s(p) = \dfrac{1}{K}\sum_{i=1}^{K} r_i\) |
-| 取值范围 | \([0, 1]\) |
-| 用途 | 对 candidate proofs **排序 / 选择**，不是最终答案 majority vote |
-
-### 实例校验
-
-曾观测到：
+## 1. 主指标
 
 \[
-s = 0.9921875 = \frac{63\times 1 + 1\times 0.5}{64}
+\boxed{
+\mathrm{STU}
+= \frac{A \cdot \beta \cdot \rho}{\alpha \cdot \tau}
+,\qquad
+\tau = \frac{T_{\mathrm{read}}}{T_{\mathrm{ref}}}
+}
 \]
 
-与 mean-of-ratings 形式一致。
+\(T_{\mathrm{ref}} = 1024\)，固定不变。STU 无量纲，越高越好：更常做对，注意力更集中在与答案相关的 token 上，读入内容里与答案相关的占比更高，每个 token 唤醒的参数占比更低，而且没有无谓地读更长的上下文。
 
-### 与最终答案的关系
+比较任何两组实验时，除 STU 外必须同时报告 \((A, \alpha, \beta, \rho, T_{\mathrm{read}})\)。只报乘除之后的一个数，看不出分是从准确率来的，还是从更稀疏的激活、更准的注意力或更短的上下文来的。
 
-| 信号 | 是否作为最终提交答案 |
-|------|----------------------|
-| verification score \(s(p)\) | 否（仅排序） |
-| selected proof 的 extracted answer | 是（经 AIME evaluator） |
-| answer majority vote over proofs | 否（本方案不以此为主） |
-
----
-
-## 3. 计算量相关辅助 Metric（用于 STOP 效率比较）
-
-在 Experiment 3（STOP）中，除 accuracy 外，建议报告以下效率相关量，以便回答「更少计算量是否达到相同或更高准确率」。
-
-| 名称 | 定义意图 |
-|------|----------|
-| `n_initial_candidates` | \(30 \times 64 = 1920\) 初始 proofs |
-| `n_verifier_calls_round1` | \(30 \times 64 \times 64 = 122{,}880\)（Heavy Pipeline 第一轮 verification） |
-| `prefix_checkpoint_tokens` | STOP 中途检查点：4k / 8k / 12k / 16k |
-| `verifier_calls_total` | 含 refinement / STOP 中途检查后的 verifier 总调用次数 |
-| `accuracy_vs_compute` | 以 `verifier_calls_total`（或等价 compute proxy）为横轴、accuracy 为纵轴的 Pareto 比较 |
-
-> 注：本文档只定义口径；具体数值以各实验跑完后的结果表填入。
-
----
-
-## 4. 三组实验的对照 Metric 表
-
-| Experiment | Solver | Verifier | Search budget | Primary metric | 诊断目标 |
-|------------|--------|----------|---------------|----------------|----------|
-| 1 Pure-4B | Qwen3-4B-Thinking-2507 | Qwen3-4B-Thinking-2507 | 统一 Heavy Pipeline | `aime_exact_answer_accuracy` | generation vs self-verification |
-| 2 Strong-Verifier | Qwen3-4B-Thinking-2507 | DeepSeek-V4-Flash | 同 Exp1（只换 verifier） | `aime_exact_answer_accuracy` | verifier bottleneck |
-| 3 STOP | Qwen3-4B-Thinking-2507 | DeepSeek-V4-Flash | 强 verifier + 4k/8k/12k/16k prefix | accuracy + compute efficiency | online verification efficiency |
-
-### 隔离原则
-
-- Exp1 → Exp2：只改变 verifier strength
-- Exp2 → Exp3：在强 verifier 基础上引入 STOP 中途检查
-
-递进关系：
+### 1.1 准确率 \(A\)
 
 \[
-\text{Generator potential}
-\rightarrow
-\text{Verifier bottleneck}
-\rightarrow
-\text{Online verification efficiency}
+A = \frac{\#\{\text{AIME 2025 上 exact-answer 正确的题}\}}{30}.
 \]
+
+答案判定与统一 AIME evaluator 一致。\(A\) 是任务回报，不是效率本身。
+
+### 1.2 激活参数占比 \(\alpha\)
+
+对单个模型：
+
+\[
+\alpha_m = \frac{P_{\mathrm{act}}(m)}{P_{\mathrm{tot}}(m)}.
+\]
+
+| 模型 | 结构 | \(P_{\mathrm{tot}}\) | \(P_{\mathrm{act}}\) | \(\alpha_m\) |
+|------|------|----------------------|----------------------|--------------|
+| Qwen3-4B-Thinking-2507 | Dense | \(\approx 4\mathrm{B}\) | \(\approx 4\mathrm{B}\) | \(1\) |
+| DeepSeek-V4-Flash | MoE | \(\approx 284\mathrm{B}\) | \(\approx 13\mathrm{B}\) | \(\approx 13/284 \approx 0.0458\) |
+
+Pipeline 里 solver 和 verifier 不是同一个模型，按各自读入 token 数加权，而不是把两个 \(\alpha\) 简单平均：
+
+\[
+\alpha
+= \frac{\sum_m T_m \, P_{\mathrm{act},m}}{\sum_m T_m \, P_{\mathrm{tot},m}}.
+\]
+
+\(T_m\) 是角色 \(m\) 在一道题上读入的 token 数（该角色全部调用之和），再对 30 题取平均。Dense 的 4B 自验证 \(\alpha = 1\)。换成 Flash 之后，\(\alpha\) 下降只来自 verifier 那一部分；solver 仍是 4B。若 verifier 的读入 token 占主导，\(\alpha\) 会靠近 \(0.0458\)，而不是 \(1\) 和 \(0.0458\) 的算术平均。
+
+\(\alpha\) 放在分母，是因为占比衡量的是结构代价：每个 token 要唤醒模型的多大一块。它不是 FLOPs。Flash 的 \(\alpha\) 远小于 4B，但绝对激活参数约 13B，仍大于 4B。因此结果表里另报绝对激活参数量
+
+\[
+C_{\mathrm{act}} = \sum_m T_m \, P_{\mathrm{act},m},
+\]
+
+避免把「占比更低」说成「算得更少」。
+
+### 1.3 注意力利用率 \(\beta\)
+
+对一次前向，把各层、各头、各 query 的注意力对上下文 token 取平均，得到读入 token 上的分布 \(\bar{a}_t\)（\(\sum_t \bar{a}_t = 1\)）：
+
+\[
+\bar{a}_t
+= \frac{1}{LHQ}\sum_{\ell,h,q} A^{(\ell,h)}_{q,t}.
+\]
+
+\[
+\beta_{\mathrm{call}} = \sum_t \bar{a}_t \, \mathrm{rel}(t)
+\in [0,1].
+\]
+
+\(\beta\) 高，表示注意力质量落在与答案相关的 token 上。注意力很尖、但尖在无关 token 上时，\(\beta\) 仍然低。
+
+注意力熵只作诊断，不进入 STU：
+
+\[
+H = -\sum_t \bar{a}_t \log \bar{a}_t.
+\]
+
+\(H\) 低只说明注意力集中，不说明集中对了地方。Pipeline 级 \(\beta\) 与 \(\alpha\) 一样，按 \(T_m\) 加权：
+
+\[
+\beta = \frac{\sum_m T_m \beta_m}{\sum_m T_m}.
+\]
+
+### 1.4 读取 token 与答案的相关占比 \(\rho\)
+
+\[
+\rho = \frac{1}{T_{\mathrm{read}}}\sum_t \mathrm{rel}(t)
+\in [0,1],
+\qquad
+T_{\mathrm{read}} = \sum_m T_m.
+\]
+
+\(\rho\) 不看注意力，只看读入内容本身有多少和答案相关。因此它和 \(\beta\) 分开：
+
+| \(\rho\) | \(\beta\) | 含义 |
+|----------|-----------|------|
+| 高 | 高 | 读入的内容大多有用，注意力也落在这些内容上 |
+| 高 | 低 | 上下文里有答案所需信息，但注意力没用上 |
+| 低 | 高 | 大部分 token 与答案无关，注意力只抓住了少数相关 token |
+| 低 | 低 | 既读了很多无关内容，注意力也没有对准 |
+
+\(\mathrm{rel}(t)\in[0,1]\)，只给对最终答案有贡献的 token：
+
+- 题面中的条件、约束、所求量
+- 推出该答案所必需的中间量或关系
+- 答案本身
+
+放弃的分支、重复转述、与答案无关的套话，\(\mathrm{rel}\) 低。标注规则一旦改变，STU 不能横向比较。
+
+### 1.5 读入长度 \(\tau\)
+
+\[
+\tau = T_{\mathrm{read}} / 1024.
+\]
+
+STOP 的 4k / 8k / 12k / 16k 前缀会改变 \(T_{\mathrm{read}}\)。若中途停下后 \(A\) 不降、\(\rho\) 上升，STU 会高于把整段推理读完的 Heavy Pipeline。这是准确率曲线上看不到的部分。
 
 ---
 
-## 5. 结果填写模板（后续比较用）
+## 3. 在并行 / 串行网格上怎么用
 
-| Experiment | Accuracy ( /30 ) | Accuracy (%) | Verifier calls (approx.) | Notes |
-|------------|------------------|--------------|--------------------------|-------|
-| Exp1 Pure-4B | | | ~122,880 (round1) + refine | |
-| Exp2 Strong-Verifier | | | ~122,880 (round1) + refine | |
-| Exp3 STOP @4k | | | | |
-| Exp3 STOP @8k | | | | |
-| Exp3 STOP @12k | | | | |
-| Exp3 STOP @16k | | | | |
+STU 用来比较 test-time scaling 的两种花法，而不是替代网格里的选择规则。格子内部仍然用 verification score 选 proof。格子之间在 \(T_{\mathrm{read}}\) 或 \(C_{\mathrm{act}}\) 接近时比较 STU 及其分解。协议、对齐方式和否证条件见 [docs/07-experiments.md](../docs/07-experiments.md)。
+
+纯加并行宽度时，预期 \(A\) 上升的同时 \(\rho\) 下降、\(\tau\) 上升。纯加串行反思时，只有 \(\beta\) 和 \(\rho\) 上升，STU 才说明反思用在了答案上。同一 \((n,r)\) 只更换 verifier 时，\(\alpha\) 与 verifier 的 \(\beta\) 分开看，不能把 Flash 更低的激活占比直接当成更少的计算。
+
+---
+
+## 4. Verification score 不是任务指标
+
+Verifier 的 rating 仍是 \(r_i\in\{0, 0.5, 1\}\)。同一 proof 的 64 次评分
+
+\[
+s(p) = \frac{1}{64}\sum_{i=1}^{64} r_i
+\]
+
+只用于候选排序。曾观测到 \(s = 0.9921875 = (63\times 1 + 1\times 0.5)/64\)，与这个平均一致。
+
+\(s(p)\) 不进入 STU，也不作为最终答案。最终对错只看抽出的答案是否通过 AIME evaluator。
+
+---
+
+## 5. 结果记在网格上
+
+\(T_{\mathrm{read}}\)、\(C_{\mathrm{act}}\) 均为每题平均。\(\alpha\)、\(\beta\)、\(\rho\) 为 token 加权平均。每一格 \((n,r)\) 的表见 [docs/07-experiments.md](../docs/07-experiments.md)。Pure-4B 与 Flash verifier 各填一份，不要把两张表合成一行。
+
+### 可比性约束
+
+下列任一项变化后，不得直接比较 STU 或 \(A\)：
+
+- 数据集与 AIME evaluator
+- solver checkpoint、generation prompt、answer extraction
+- temperature、top-p、generation max length、Heavy Pipeline search budget
+- \(\mathrm{rel}(t)\) 的标注规则
+- \(T_{\mathrm{ref}}\)（固定为 1024）

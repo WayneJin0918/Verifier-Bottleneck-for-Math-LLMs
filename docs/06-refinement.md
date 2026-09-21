@@ -1,12 +1,8 @@
-# 6. Refinement 的实验逻辑
+# 6. 串行反思的一轮
 
-Heavy Pipeline 不只做：
+串行 test-time scaling 的一轮不是重新采样，而是对已经选中的 proof 做一次反思再改写。Heavy Pipeline 的 refinement 就是这个步骤；重复 \(r\) 次即深度轴。与纯并行的差别见 [07-experiments.md](07-experiments.md)。
 
-```
-generate -> verify -> choose
-```
-
-还包含后续 refinement。
+一轮的内部顺序：
 
 ## 总体逻辑
 

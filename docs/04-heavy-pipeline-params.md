@@ -1,6 +1,6 @@
 # 4. Heavy Pipeline 统一核心参数
 
-目前锁定的 Heavy Pipeline 参数如下。这些参数构成所有 Heavy Pipeline baseline 的共同 search setting。
+目前锁定的 Heavy Pipeline 参数如下。它们是并行 × 串行网格里参考格 \((n=64,\ r\le 16)\) 的搜索设置，不是唯一要跑的一点。扫宽度或深度时，除了正在变化的 \(n\) 或 \(r\)，下表保持不变。网格见 [07-experiments.md](07-experiments.md)。
 
 | 参数 | 值 |
 |------|-----|

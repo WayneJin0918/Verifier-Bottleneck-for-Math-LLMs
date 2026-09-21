@@ -1,50 +1,75 @@
-# 7. 三组实验对照与比较方式
+# 7. 并行与串行：用 test-time scaling 验证 STU
 
-## Experiment 1 — Pure-4B Heavy Pipeline
+STU 只有在两种缩放方式被拆开、并且按同样的读入或激活量比较时，才称得上验证。否则只是在不同预算下比准确率。
 
-| 项 | 设置 |
-|----|------|
-| Solver | Qwen3-4B-Thinking-2507 |
-| Verifier | Qwen3-4B-Thinking-2507 |
-| Search | 统一 Heavy Pipeline 参数 |
-| 诊断 | generation 能力 vs 4B self-verification |
+## 网格
 
-## Experiment 2 — Strong-Verifier Heavy Pipeline
+Solver 固定为 Qwen3-4B-Thinking-2507。每道题做一个格子 \((n, r)\)：
 
-| 项 | 设置 |
-|----|------|
-| Solver | Qwen3-4B-Thinking-2507（与 Exp1 相同） |
-| Verifier | DeepSeek-V4-Flash |
-| Search | **与 Exp1 完全相同**（只换 verifier） |
-| 诊断 | verifier bottleneck：强 verifier 能否更好挑出正确解 |
+| 轴 | 取值 | 做什么 |
+|----|------|--------|
+| 并行宽度 \(n\) | 1, 4, 16, 64 | 独立生成 \(n\) 条 proof，逐条验证，按 verification score 取最好的一条。不再改写 |
+| 串行深度 \(r\) | 0, 1, 2, 4, 8, 16 | \(r=0\) 就是上面的纯并行。\(r>0\) 时，从当前选中的 proof 出发，做 \(r\) 轮「验证 → 指出问题 → solver 改写 → 再验证」 |
 
-## Experiment 3 — STOP
+每一轮串行只改写 1 条 proof，与 Heavy Pipeline 的 `n_proofs_to_refine = 1` 一致。`max_rounds = 16` 是深度轴的右端，不是每格都跑满。
 
-| 项 | 设置 |
-|----|------|
-| Solver | Qwen3-4B-Thinking-2507 |
-| Verifier | DeepSeek-V4-Flash |
-| Checkpoints | 4k / 8k / 12k / 16k prefix |
-| 诊断 | online verification efficiency：更少计算量下能否达到同等或更高 accuracy |
+Heavy Pipeline 锁定参数（温度 1.0、top-p 0.95、每条 proof 64 次验证、seed 1234 等）是参考格 \((n=64, r\le 16)\) 的搜索设置，见 [04-heavy-pipeline-params.md](04-heavy-pipeline-params.md)。扫网格时，除了正在变化的 \(n\) 或 \(r\)，这些设置不动。
 
-## 比较方式
+### 串行一轮里的 STOP
 
-1. **Exp1 vs Exp2（隔离 verifier）**  
-   同一 solver、同一 search budget；比较最终 AIME accuracy 与选中 proof 的 verification score 分布。若 Exp2 显著高于 Exp1，支持「瓶颈在 verification / selection」。
+在某一轮改写读到 4k、8k、12k、16k token 时做一次验证，决定是继续写完，还是停在该前缀上重写。这仍是串行深度上的操作：截断的是同一条轨迹，不是新开一组并行样本。
 
-2. **Exp2 vs Exp3（隔离 STOP）**  
-   同一强 verifier；比较 accuracy–compute Pareto：是否在更低 verifier 调用量下达到 ≥ Exp2 的 accuracy。
+若截断后 \(A\) 不降、\(\rho\) 上升、\(\tau\) 下降，STU 会高于把该轮写满。若 \(A\) 下降，说明停在了尚未包含答案的前缀上，STU 的上升不能算作任务完成得更好。
 
-3. **主指标统一**  
-   一律报告 \(\text{Accuracy} = \text{正确题数}/30\)，并按 [metrics/definitions.md](../metrics/definitions.md) 填写结果模板。
+## 对齐预算再比
 
-## 结果模板
+同一 verifier 下，比较 \(C_{\mathrm{act}}=\sum_m T_m P_{\mathrm{act},m}\) 或 \(T_{\mathrm{read}}\) 接近的格子，例如：
 
-| Experiment | Accuracy ( /30 ) | Accuracy (%) | Verifier calls (approx.) | Notes |
-|------------|------------------|--------------|--------------------------|-------|
-| Exp1 Pure-4B | | | | |
-| Exp2 Strong-Verifier | | | | |
-| Exp3 STOP @4k | | | | |
-| Exp3 STOP @8k | | | | |
-| Exp3 STOP @12k | | | | |
-| Exp3 STOP @16k | | | | |
+- 宽而浅：\((n=64, r=0)\)
+- 窄而深：\((n=1, r=16)\)
+- 折中：\((n=8, r=4)\)（\(n=8\) 不在默认刻度上，只在需要补一个对齐点时加）
+
+默认刻度是 1 / 4 / 16 / 64 与 0 / 1 / 2 / 4 / 8 / 16。先报这些格子，再为对齐预算补点。不要用「64 并行 + 16 轮」对「1 并行 + 0 轮」这种预算差一个数量级的对比来下结论。
+
+## Verifier 只换一次
+
+两张相同的 \((n,r)\) 表：
+
+| 表 | Solver | Verifier | \(\alpha\) |
+|----|--------|----------|------------|
+| Pure-4B | Qwen3-4B-Thinking-2507 | Qwen3-4B-Thinking-2507 | 1 |
+| Strong verifier | 同上 | DeepSeek-V4-Flash | 约 \(13/284\approx 0.0458\)，再按该模型实际读入的 token 加权进整条 pipeline |
+
+第二张表不改变并行宽度、串行深度和搜索参数。这样 \(\alpha\) 和 verifier 的 \(\beta\) 与「多采样 / 多反思」分开。
+
+## 怎样算验证了，怎样算否证
+
+支持该指标的结果是：在对齐预算后，按 \(A\) 的排序和按 STU 的排序不一致，而且差异能由分解项解释。
+
+- 并行把 \(A\) 做高，但新轨迹把 \(\rho\) 拉低、\(\tau\) 拉高，STU 在中等宽度就见顶。这说明多采样的准确率里有一部分没有花在答案上。
+- 串行在相近的 \(T_{\mathrm{read}}\) 上 \(\beta\) 和 \(\rho\) 更高，STU 高于同预算的宽并行。这说明反思改到了与答案相关的 token，而不是又读了一遍无关内容。
+- 换成 Flash 之后 \(A\) 上升，同时 verifier 的 \(\beta\) 上升。若 \(A\) 上升只伴随更长的低 \(\rho\) 读入，STU 不应跟着上升。
+
+下列任一情况成立，则这个指标没有比准确率多说出东西：
+
+- 在整张网格上，STU 与 \(A\) 给出的优劣顺序始终相同。
+- 串行带来的 \(A\) 增益，伴随与「再开一批同宽并行」相当的 \(T_{\mathrm{read}}\) 增长，\(\beta\) 和 \(\rho\) 没有提高。
+- 更换 verifier 只改变 \(A\)，不改变并行与串行的 STU 差距。
+
+## 结果表
+
+每格记录每题平均。Pure-4B 与 Strong verifier 各一份。
+
+| \(n\) | \(r\) | STOP | \(A\) (/30) | \(\alpha\) | \(\beta\) | \(\rho\) | \(T_{\mathrm{read}}\) | \(C_{\mathrm{act}}\) | STU |
+|-------|-------|------|-------------|------------|-----------|----------|------------------------|----------------------|-----|
+| 1 | 0 | — | | | | | | | |
+| 4 | 0 | — | | | | | | | |
+| 16 | 0 | — | | | | | | | |
+| 64 | 0 | — | | | | | | | |
+| 1 | 1 | — | | | | | | | |
+| 1 | 4 | — | | | | | | | |
+| 1 | 16 | — | | | | | | | |
+| 64 | 16 | — | | | | | | | |
+| 1 | 4 | 4k / 8k / 12k / 16k | | | | | | | |
+
+\((64, 16)\) 是原来的 Heavy Pipeline 参考格。中间的 \((n,r)\) 按同一规则补齐，不必先跑满再解释。
