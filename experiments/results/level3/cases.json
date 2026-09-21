@@ -1,0 +1,88 @@
+{
+  "proof_max": 4096,
+  "n_probe": 36,
+  "finished": 11,
+  "easy_available": 11,
+  "medium_available": 0,
+  "easy": [
+    {
+      "idx": 213,
+      "tokens": 666,
+      "answer": 25,
+      "gold": 25,
+      "correct": true
+    },
+    {
+      "idx": 201,
+      "tokens": 962,
+      "answer": 2,
+      "gold": 2,
+      "correct": true
+    },
+    {
+      "idx": 206,
+      "tokens": 976,
+      "answer": 1320,
+      "gold": 1320,
+      "correct": true
+    },
+    {
+      "idx": 236,
+      "tokens": 1292,
+      "answer": 5,
+      "gold": 5,
+      "correct": true
+    },
+    {
+      "idx": 215,
+      "tokens": 1315,
+      "answer": 3,
+      "gold": 3,
+      "correct": true
+    },
+    {
+      "idx": 222,
+      "tokens": 1348,
+      "answer": 8,
+      "gold": 8,
+      "correct": true
+    },
+    {
+      "idx": 224,
+      "tokens": 1550,
+      "answer": 2,
+      "gold": 2,
+      "correct": true
+    },
+    {
+      "idx": 231,
+      "tokens": 1804,
+      "answer": 8,
+      "gold": 8,
+      "correct": true
+    },
+    {
+      "idx": 207,
+      "tokens": 2020,
+      "answer": -27,
+      "gold": -27,
+      "correct": true
+    },
+    {
+      "idx": 203,
+      "tokens": 3791,
+      "answer": -5,
+      "gold": -5,
+      "correct": true
+    },
+    {
+      "idx": 202,
+      "tokens": 3921,
+      "answer": 1951,
+      "gold": 1951,
+      "correct": true
+    }
+  ],
+  "medium": [],
+  "ready": false
+}
