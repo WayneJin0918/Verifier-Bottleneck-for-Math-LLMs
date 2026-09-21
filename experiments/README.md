@@ -21,7 +21,7 @@ Width comparisons do not match token budgets. The matched-budget comparison is r
 
 ## Serve the model
 
-Eight GPUs, one server each, context 90112 so an 81920-token completion fits with the prompt. Defaults point at the checkpoint and interpreter on this machine. Override `VLLM_PYTHON` and `VLLM_MODEL` to move them.
+Eight GPUs, one server each, context 90112 so an 81920-token completion fits with the prompt. Set `VLLM_PYTHON` to the interpreter that has vLLM, and `VLLM_MODEL` to the checkpoint, then:
 
 ```bash
 bash start_vllm.sh

@@ -17,7 +17,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-ROOT = Path("/opt/local/Verifier-Bottleneck-for-Math-LLMs/experiments")
+ROOT = Path(__file__).resolve().parent.parent
 PROBLEMS = json.loads((ROOT / "aime2025.json").read_text())
 SUBSET = json.loads((ROOT / "subset.json").read_text()) if (ROOT / "subset.json").exists() else [1, 6, 11, 16, 21, 26]
 OUT = ROOT / "results" / "tier1"

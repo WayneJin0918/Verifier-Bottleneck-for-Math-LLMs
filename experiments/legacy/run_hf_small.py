@@ -15,8 +15,8 @@ import re
 import time
 from pathlib import Path
 
-ROOT = Path("/opt/local/Verifier-Bottleneck-for-Math-LLMs/experiments")
-MODEL = "/opt/local/ckpt/Qwen3-4B-Thinking-2507"
+ROOT = Path(__file__).resolve().parent.parent
+MODEL = os.environ["MODEL_PATH"]
 PROBLEMS = json.loads((ROOT / "aime2025.json").read_text())
 OUT = ROOT / "results" / "hf_probe"
 SEED = 1234

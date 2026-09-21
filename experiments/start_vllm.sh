@@ -2,8 +2,8 @@
 set -e
 DIR=$(cd "$(dirname "$0")" && pwd)
 mkdir -p "$DIR/logs"
-PY=${VLLM_PYTHON:-/opt/local/Miniconda3/envs/hyimage/bin/python}
-MODEL=${VLLM_MODEL:-/opt/local/ckpt/Qwen3-4B-Thinking-2507}
+PY=${VLLM_PYTHON:?Set VLLM_PYTHON to the Python interpreter that has vLLM}
+MODEL=${VLLM_MODEL:?Set VLLM_MODEL to the Qwen3-4B-Thinking-2507 checkpoint}
 for i in 0 1 2 3 4 5 6 7; do
   CUDA_VISIBLE_DEVICES=$i nohup "$PY" -m vllm.entrypoints.openai.api_server \
     --model "$MODEL" \
