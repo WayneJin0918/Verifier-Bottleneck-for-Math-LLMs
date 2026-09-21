@@ -1,6 +1,6 @@
 # Verifier Bottleneck for Math LLMs
 
-This branch is the rendered note. The code is on [`main`](https://github.com/WayneJin0918/Verifier-Bottleneck-for-Math-LLMs/tree/main).
+This branch is the rendered note. The code is on [`main`](https://github.com/Jing524/Verifier-Bottleneck-for-Math-LLMs/tree/main).
 
 $$
 \mathrm{STU}=\frac{A\cdot\beta\cdot\rho}{\alpha\cdot\tau}
