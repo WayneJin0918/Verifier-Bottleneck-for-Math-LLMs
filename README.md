@@ -1,6 +1,6 @@
 # Verifier Bottleneck for Math LLMs
 
-Code for the structural task utilization note. On one model the reported score is \(A/\tau\): exact-answer accuracy divided by tokens read, in units of 1024.
+Code for the structural task utilization note. On one model the reported score is $A/\tau$: exact-answer accuracy divided by tokens read, in units of 1024.
 
 $$
 \mathrm{STU}=\frac{A\cdot\beta\cdot\rho}{\alpha\cdot\tau}
@@ -12,7 +12,7 @@ The rendered note is on the `blog` branch and at the GitHub Pages site. This bra
 
 | Path | Role |
 | --- | --- |
-| `experiments/metrics.py` | Vote, token count, \(A/\tau\), bootstrap |
+| `experiments/metrics.py` | Vote, token count, $A/\tau$, bootstrap |
 | `experiments/analyze.py` | Rebuilds the AIME table and the box-position check from local traces |
 | `experiments/run_aime_full.py` | AIME 2025 at 81920 tokens, temperature 0.6, top-k 20 |
 | `experiments/run_small.py` | Easy and medium width, verifier ratings, short reflection |
